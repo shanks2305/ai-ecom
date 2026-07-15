@@ -20,7 +20,7 @@ const getAllActiveVerifications = async () => {
 
 const getActiveVerificationByEmail = async (email: string, purpose: VerificationPurpose) => {
     try {
-        const verification = await prisma.verification.findUnique({
+        const verification = await prisma.verification.findFirst({
             where: {
                 email,
                 purpose,
@@ -38,13 +38,19 @@ const getActiveVerificationByEmail = async (email: string, purpose: Verification
 
 const createVerification = async (email: string, purpose: VerificationPurpose, codeHash: string) => {
     try {
-        const verification = await prisma.verification.create({
-            data: {
+        const verification = await prisma.verification.upsert({
+            where: { email },
+            create: {
                 email,
                 purpose,
                 codeHash,
                 expiresAt: addMinutes(env.otpExpirationMinutes),
-            }
+            },
+            update: {
+                purpose,
+                codeHash,
+                expiresAt: addMinutes(env.otpExpirationMinutes),
+            },
         })
         return verification
     } catch (error) {

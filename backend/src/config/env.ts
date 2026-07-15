@@ -40,4 +40,6 @@ export const env = {
     from: smtpFrom,
   },
   otpExpirationMinutes: Number(process.env.OTP_EXPIRATION_MINUTES) || 5,
+  jwtSecret: requireEnv("JWT_SECRET"),
+  jwtExpirationMinutes: Number(process.env.JWT_EXPIRATION_MINUTES) || 120,
 } as const;

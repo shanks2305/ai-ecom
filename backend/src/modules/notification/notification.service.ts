@@ -1,8 +1,7 @@
 import { env } from "../../config/env.js";
 import { VerificationPurpose } from "../../generated/prisma/enums.js";
 import { sendEmail } from "./provider/nodemailer.provider.js";
-import otpTemplate from "./template/ otp.template.js";
-import templates from "./template/ otp.template.js";
+import templates from "./template/otp.template.js";
 
 const purposeLabels: Record<VerificationPurpose, string> = {
     BOOTSTRAP: "account setup",
@@ -13,7 +12,7 @@ const purposeLabels: Record<VerificationPurpose, string> = {
 const sendOTP = async (
     email: string,
     code: string,
-    purpose: VerificationPurpose
+    purpose: VerificationPurpose = VerificationPurpose.LOGIN
 ) => {
     try {
         const action = purposeLabels[purpose];
@@ -26,6 +25,7 @@ const sendOTP = async (
             text,
             html,
         });
+        return true
     } catch (error) {
         throw error;
     }
@@ -43,6 +43,7 @@ const sendWelcome = async (email: string) => {
             text,
             html,
         });
+        return true
     } catch (error) {
         throw error;
     }

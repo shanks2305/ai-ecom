@@ -19,6 +19,12 @@ enum VerificationPurpose {
   REGISTER
 }
 
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique @db.VarChar(255)
@@ -61,4 +67,85 @@ model Verification {
   @@index([email])
   @@index([expiresAt])
   @@map("verifications")
+}
+
+model Brand {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(255)
+  slug      String   @unique @db.VarChar(255)
+  description String?  @db.Text
+  logo      String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+
+  @@map("brands")
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(255)
+  slug      String   @unique @db.VarChar(255)
+  description String?  @db.Text
+  parentId  String?
+  parent    Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Category[] @relation("CategoryHierarchy")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(255)
+  slug      String   @unique @db.VarChar(255)
+  description String?  @db.Text
+  sku       String   @unique @db.VarChar(255)
+  price     Float
+  currency  String   @default("INR")
+  status    ProductStatus @default(DRAFT)
+  brandId    String
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  brand      Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([brandId])
+  @@index([categoryId])
+  @@map("products")
+
+  inventories Inventory[]
+  images ProductImage[]
+}
+
+model Inventory {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int
+  reservedQuantity Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId])
+  @@map("inventories")
+}
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String   @db.Text
+  altText   String?  @db.VarChar(255)
+  sortOrder Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId])
+  @@map("product_images")
 }
