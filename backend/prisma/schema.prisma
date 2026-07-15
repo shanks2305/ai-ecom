@@ -26,18 +26,20 @@ enum ProductStatus {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique @db.VarChar(255)
-  firstName    String?  @db.VarChar(100)
-  lastName     String?  @db.VarChar(100)
-  role         Role     @default(CUSTOMER)
-  isVerified   Boolean  @default(false)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id           String    @id @default(uuid())
+  email        String    @unique @db.VarChar(255)
+  firstName    String?   @db.VarChar(100)
+  lastName     String?   @db.VarChar(100)
+  role         Role      @default(CUSTOMER)
+  isVerified   Boolean   @default(false)
+  isActive     Boolean   @default(true)
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   sessions Session[]
 
+  @@index([deletedAt])
   @@map("users")
 }
 
@@ -70,53 +72,59 @@ model Verification {
 }
 
 model Brand {
-  id        String   @id @default(uuid())
-  name      String   @db.VarChar(255)
-  slug      String   @unique @db.VarChar(255)
-  description String?  @db.Text
-  logo      String?  @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(uuid())
+  name        String    @db.VarChar(255)
+  slug        String    @unique @db.VarChar(255)
+  description String?   @db.Text
+  logo        String?   @db.Text
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   products Product[]
 
+  @@index([deletedAt])
   @@map("brands")
 }
 
 model Category {
-  id        String   @id @default(uuid())
-  name      String   @db.VarChar(255)
-  slug      String   @unique @db.VarChar(255)
-  description String?  @db.Text
-  parentId  String?
-  parent    Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  children  Category[] @relation("CategoryHierarchy")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String     @id @default(uuid())
+  name        String     @db.VarChar(255)
+  slug        String     @unique @db.VarChar(255)
+  description String?    @db.Text
+  parentId    String?
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Category[] @relation("CategoryHierarchy")
+  deletedAt   DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
   products Product[]
 
+  @@index([deletedAt])
   @@map("categories")
 }
 
 model Product {
-  id        String   @id @default(uuid())
-  name      String   @db.VarChar(255)
-  slug      String   @unique @db.VarChar(255)
-  description String?  @db.Text
-  sku       String   @unique @db.VarChar(255)
-  price     Float
-  currency  String   @default("INR")
-  status    ProductStatus @default(DRAFT)
-  brandId    String
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  brand      Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String        @id @default(uuid())
+  name        String        @db.VarChar(255)
+  slug        String        @unique @db.VarChar(255)
+  description String?       @db.Text
+  sku         String        @unique @db.VarChar(255)
+  price       Float
+  currency    String        @default("INR")
+  status      ProductStatus @default(DRAFT)
+  brandId     String
+  categoryId  String
+  category    Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  brand       Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  deletedAt   DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   @@index([brandId])
   @@index([categoryId])
+  @@index([deletedAt])
   @@map("products")
 
   inventories Inventory[]
@@ -124,28 +132,32 @@ model Product {
 }
 
 model Inventory {
-  id        String   @id @default(uuid())
-  productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  quantity  Int
-  reservedQuantity Int @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String    @id @default(uuid())
+  productId        String
+  product          Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity         Int
+  reservedQuantity Int       @default(0)
+  deletedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@index([productId])
+  @@index([deletedAt])
   @@map("inventories")
 }
 
 model ProductImage {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  url       String   @db.Text
-  altText   String?  @db.VarChar(255)
-  sortOrder Int @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String    @db.Text
+  altText   String?   @db.VarChar(255)
+  sortOrder Int       @default(0)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([productId])
+  @@index([deletedAt])
   @@map("product_images")
 }

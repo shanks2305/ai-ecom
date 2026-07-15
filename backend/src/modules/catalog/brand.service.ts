@@ -1,5 +1,6 @@
 import { Permission } from "../../constant/permision.js";
 import { requirePermission } from "../../lib/auth.js";
+import { softDeleteBrand } from "../../lib/catalog-soft-delete.js";
 import { prisma } from "../../lib/prisma.js";
 import slugify from "../../lib/slugify.js";
 
@@ -38,9 +39,7 @@ const updateBrand = async (id: string, name: string, description?: string, logo?
 const deleteBrand = async (id: string) => {
     try {
         requirePermission(Permission.BRAND_DELETE, "delete a brand");
-        await prisma.brand.delete({
-            where: { id },
-        });
+        await softDeleteBrand(id);
     } catch (error) {
         throw error;
     }
