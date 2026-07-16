@@ -16,6 +16,10 @@ const createBrand = async (name: string, description?: string, logo?: string) =>
         if (existingBrand) {
             slug = slugify(senatizedName, true);
         }
+        const brand = await prisma.brand.create({
+            data: { name, slug, description, logo },
+        });
+        return brand;
     } catch (error) {
         throw error;
     }

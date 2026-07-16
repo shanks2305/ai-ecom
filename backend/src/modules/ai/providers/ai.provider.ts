@@ -10,15 +10,55 @@ import { logger } from "../../../lib/logger.js";
 import { env } from "../../../config/env.js";
 import { provider } from "./index.js";
 import { AIProviderError } from "./ai.erros.js";
+import getSystemPrompt   from "../prompts/system.prompt.js"; 
+import getTools from "../tools/index.js";
+import { handleToolCalls } from "./ai.toolhandler.js";
 
 const aiProvider = async (messages: OpenAI.ChatCompletionMessageParam[]) => {
   try {
-    const response = await provider.chat.completions.create({
+    const systemPrompt = await getSystemPrompt();
+    const tools = getTools();
+    const context: OpenAI.ChatCompletionMessageParam[] = [
+      {
+        role: "system",
+        content: systemPrompt,
+      },
+      ...messages,
+    ];
+    logger.info(`Sending request to AI model: ${env.ai.model}`);
+    let response = await provider.chat.completions.create({
       model: env.ai.model,
-      messages,
+      messages: context,
+      tools: tools as OpenAI.ChatCompletionTool[],
+      temperature: 0.1,
+      top_p: 0.9,
     });
+    let message = response.choices[0]?.message;
 
-    const content = response.choices[0]?.message?.content;
+    while (
+      response.choices[0]?.finish_reason === "tool_calls" &&
+      message?.tool_calls
+    ) {
+      context.push(message);
+      const toolResults = await handleToolCalls(message);
+      context.push(...toolResults);
+
+      response = await provider.chat.completions.create({
+        model: env.ai.model,
+        messages: context,
+        tools: tools as OpenAI.ChatCompletionTool[],
+        temperature: 0.1,
+        top_p: 0.9,
+      });
+      message = response.choices[0]?.message;
+    }
+
+    const usage = response.usage;
+    logger.info(
+      `AI usage: ${usage?.prompt_tokens} prompt tokens, ${usage?.completion_tokens} completion tokens, ${usage?.total_tokens} total tokens`,
+    );
+
+    const content = message?.content;
     if (!content) {
       throw new AIProviderError("AI returned an empty response", "EMPTY_RESPONSE");
     }

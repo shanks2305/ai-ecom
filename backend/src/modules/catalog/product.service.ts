@@ -128,7 +128,7 @@ const getProductBySlug = async (slug: string) => {
 const searchProducts = async (query: string) => {
     try {
         const products = await prisma.product.findMany({
-            where: { name: { contains: query, mode: "insensitive" } },
+            where: { OR: [{ name: { contains: query, mode: "insensitive" } }, { description: { contains: query, mode: "insensitive" } }] },
         });
         return products;
     } catch (error) {
@@ -145,13 +145,24 @@ const listProducts = async () => {
         throw error;
     }
 }
+
+const getProductsByQuery = async (query: any) => {
+    try {
+        const products = await prisma.product.findMany({
+            where: query,
+        });
+        return products;
+    } catch (error) {
+        throw error;
+    }
+}
+
 // findAlternatives()
 const findAlternatives = async (ids: string[]) => {
     try {
         if (!ids.length) {
             return [];
         }
-
         const products = await prisma.product.findMany({
             where: { id: { in: ids } },
         });
@@ -177,4 +188,5 @@ export default {
     searchProducts,
     listProducts,
     findAlternatives,
+    getProductsByQuery,
 }

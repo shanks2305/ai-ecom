@@ -3,9 +3,9 @@ import { User } from "../generated/prisma/client.js";
 
 type ConversationContext = {
     token: string;
-    user: User;
+    user: User | null;
     isAuthenticated: boolean;
-    conversationId: string;
+    conversationId: string | undefined;
 };
 
 const conversationContext = new AsyncLocalStorage<ConversationContext>();
@@ -18,8 +18,9 @@ export const getConversationContext = () => {
     return context;
 };
 
-export const setConversationContext = (context: ConversationContext) => {
-    conversationContext.run(context, () => {
-        return context;
-    });
+export const runWithConversationContext = <T>(
+    context: ConversationContext,
+    fn: () => T
+): T => {
+    return conversationContext.run(context, fn);
 };

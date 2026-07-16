@@ -5,7 +5,7 @@ import { getConversationContext } from "./context.js";
 
 export const requirePermission = (permission: Permission, action: string): User => {
     const { user, isAuthenticated } = getConversationContext();
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
         throw new Error("You are not authenticated");
     }
     if (!authorizationService.canAccess(user.role, permission)) {
