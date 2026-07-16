@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import { CONVERSATION_STORAGE_KEY, sendChatMessage, startConversation } from '../lib/chat'
+import { CONVERSATION_STORAGE_KEY, startConversation } from '../lib/chat'
+import { createOptimisticUserMessage, mergeIncomingMessages } from '../lib/chat/helpers'
 import { useChatHydration } from './useChatHydration'
 
 export function useChatPage() {
@@ -18,22 +19,29 @@ export function useChatPage() {
     const content = input.trim()
     if (!content || isLoading) return
 
+    const optimisticMessage = createOptimisticUserMessage(content)
+    const pendingMessageId = optimisticMessage.id
+
     setInput('')
     setError(null)
+    setMessages((previous) => [...previous, optimisticMessage])
     setIsLoading(true)
 
     try {
+      const result = await startConversation(content, conversationId ?? undefined)
+
       if (!conversationId) {
-        const result = await startConversation(content)
         sessionStorage.setItem(CONVERSATION_STORAGE_KEY, result.conversationId)
         setConversationId(result.conversationId)
-        setMessages(result.messages)
-        return
       }
 
-      const newMessages = await sendChatMessage(conversationId, content)
-      setMessages((current) => [...current, ...newMessages])
+      setMessages((previous) =>
+        mergeIncomingMessages(previous, result.messages, pendingMessageId),
+      )
     } catch (sendError) {
+      setMessages((previous) =>
+        previous.filter((message) => message.id !== pendingMessageId),
+      )
       setError(sendError instanceof Error ? sendError.message : 'Failed to send message')
       setInput(content)
     } finally {

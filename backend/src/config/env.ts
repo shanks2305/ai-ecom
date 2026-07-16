@@ -47,4 +47,7 @@ export const env = {
     model: requireEnv("AI_MODEL"),
     baseUrl: requireEnv("AI_BASE_URL"),
   },
+  conversation: {
+    contextExpirationMinutes: Number(process.env.CONTEXT_EXPIRATION_MINUTES) || 30,
+  },
 } as const;

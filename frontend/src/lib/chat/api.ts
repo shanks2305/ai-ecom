@@ -1,7 +1,7 @@
-import { getApiUrl, getChatModel, parseError, toChatMessage } from './helpers'
+import { getApiUrl, parseError, toChatMessage } from './helpers'
 import type { ApiMessage, ChatMessage } from './types'
 
-export async function startConversation(content: string): Promise<{
+export async function startConversation(content: string, conversationId?: string): Promise<{
   conversationId: string
   messages: ChatMessage[]
 }> {
@@ -10,9 +10,9 @@ export async function startConversation(content: string): Promise<{
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       content,
-      model: getChatModel(),
       channel: 'WEB',
       stage: 'BROWSING',
+      conversationId,
     }),
   })
 
@@ -21,10 +21,7 @@ export async function startConversation(content: string): Promise<{
   }
 
   const data = await response.json()
-  const messages = [
-    toChatMessage(data.message as ApiMessage),
-    toChatMessage(data.assistantMessage as ApiMessage),
-  ]
+  const messages = data.messages.map(toChatMessage)
 
   return {
     conversationId: data.conversation.id as string,
@@ -32,39 +29,11 @@ export async function startConversation(content: string): Promise<{
   }
 }
 
-export async function sendChatMessage(
-  conversationId: string,
-  content: string,
-): Promise<ChatMessage[]> {
-  const response = await fetch(
-    `${getApiUrl()}/api/v1/conversation/${conversationId}/messages`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        content,
-        model: getChatModel(),
-      }),
-    },
-  )
-
-  if (!response.ok) {
-    throw new Error(await parseError(response))
-  }
-
-  const data = await response.json()
-
-  return [
-    toChatMessage(data.userMessage as ApiMessage),
-    toChatMessage(data.assistantMessage as ApiMessage),
-  ]
-}
-
 export async function fetchConversationMessages(
   conversationId: string,
 ): Promise<ChatMessage[]> {
   const response = await fetch(
-    `${getApiUrl()}/api/v1/conversation/${conversationId}/messages`,
+    `${getApiUrl()}/api/v1/conversation/${conversationId}`,
   )
 
   if (!response.ok) {

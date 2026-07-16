@@ -1,8 +1,9 @@
 import aiService from "../ai/core/ai.service.js";
-import { Prisma } from "../../generated/prisma/client.js";
+import { Conversation, Prisma } from "../../generated/prisma/client.js";
 import { ConversationChannel, ConversationStage, ConversationStatus, MessageRole } from "../../generated/prisma/enums.js";
 import { logger } from "../../lib/logger.js";
 import { prisma } from "../../lib/prisma.js";
+import { env } from "../../config/env.js";
 
 const generateAssistantReply = async (conversationId: string, model: string) => {
     const history = await getMessages(conversationId);
@@ -59,7 +60,7 @@ const createConversation = async (userId: string | null | undefined, channel: Co
             },
         });
         const assistantMessage = await generateAssistantReply(conversation.id, model);
-        return { conversation, message, assistantMessage };
+        return { conversation, messages: [message, assistantMessage] };
     } catch (error) {
         logger.error({ error }, "Failed to create conversation");
         throw error;
@@ -133,12 +134,13 @@ const sendMessage = async (conversationId: string, content: string, model: strin
         throw new Error("Conversation not found");
     }
 
-    const userMessage = await createMessage(conversationId, MessageRole.USER, content, model);
-    const assistantMessage = await generateAssistantReply(conversationId, model);
-
+    await createMessage(conversationId, MessageRole.USER, content, model);
+    await generateAssistantReply(conversationId, model);
+    
     await updateConversation(conversationId, { lastMessageAt: new Date() });
+    const messages = await getMessages(conversationId);
 
-    return { userMessage, assistantMessage };
+    return { messages };
 };
 
 const updateConversation = async (id: string, data: Prisma.ConversationUpdateInput) => {
@@ -167,6 +169,18 @@ const updateMessage = async (id: string, data: Prisma.MessageUpdateInput) => {
     }
 };
 
+const checkIfContextIsExpired = async (conversation: Conversation) => {
+    try {
+        const contextExpirationMinutes = env.conversation.contextExpirationMinutes;
+        const lastMessageAt = conversation.lastMessageAt;
+        const isExpired = lastMessageAt && lastMessageAt.getTime() + contextExpirationMinutes * 60 * 1000 < Date.now();
+        return isExpired;
+    } catch (error) {
+        logger.error({ error }, "Failed to check if context is expired");
+        throw error;
+    }
+}
+
 export default {
     createConversation,
     getConversation,
@@ -176,4 +190,5 @@ export default {
     sendMessage,
     updateConversation,
     updateMessage,
+    checkIfContextIsExpired,
 }
