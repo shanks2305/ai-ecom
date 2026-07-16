@@ -42,4 +42,9 @@ export const env = {
   otpExpirationMinutes: Number(process.env.OTP_EXPIRATION_MINUTES) || 5,
   jwtSecret: requireEnv("JWT_SECRET"),
   jwtExpirationMinutes: Number(process.env.JWT_EXPIRATION_MINUTES) || 120,
+  ai: {
+    apiKey: requireEnv("AI_API_KEY"),
+    model: requireEnv("AI_MODEL"),
+    baseUrl: requireEnv("AI_BASE_URL"),
+  },
 } as const;
