@@ -2,6 +2,7 @@ import express from "express";
 import { applyErrorHandlers, applyMiddleware } from "./middleware/index.js";
 import isSuperAdminPreset from "./modules/bootstrap/bootstrap.service.js";
 import { logger } from "./lib/logger.js";
+import conversationRoute from "./modules/conversation/conversation.route.js";
 
 const app = express();
 
@@ -16,6 +17,8 @@ applyMiddleware(app);
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
+
+app.use("/api/v1/conversation", conversationRoute);
 
 applyErrorHandlers(app);
 
