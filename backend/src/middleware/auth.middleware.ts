@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { type User } from "../generated/prisma/client.js";
 import { runWithConversationContext } from "../lib/context.js";
 import jwtService from "../modules/auth/jwt.service.js";
+import { logger } from "../lib/logger.js";
 
 const getHeader = (value: string | string[] | undefined): string | undefined =>
     Array.isArray(value) ? value[0] : value;
@@ -15,12 +16,11 @@ const authenticateUser = async (req: Request, res: Response, next: NextFunction)
                 : req.headers.authorization?.split(" ")[1])
 
         const conversationId = getHeader(
-            req.headers["x-conversation-id"] ?? req.headers.conversationid
+            req.headers["x-conversation-id"] ?? req.headers.conversationid ?? req.body.conversationId
         );
-
         let user: User | null = null;
         let isAuthenticated = false;
-
+        logger.info(`Starting conversation with id: ${conversationId}`);
         if (token) {
             try {
                 user = await jwtService.verifyToken(token);

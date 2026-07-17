@@ -184,13 +184,108 @@ const verifyOTP = (): Tool => ({
   },
 });
 
-const getCartItemsTool = (): Tool => ({
+const getCartTool = (): Tool => ({
   type: "function",
   function: {
-    name: "get_cart_items",
+    name: "get_cart",
     description:
-      "Get the current user's cart items. Call this when the user asks for their cart items.",
+      "Get the current user's cart. Call this when the user asks for their cart.",
     parameters: NO_PARAMS,
+  },
+});
+
+const createCartTool = (): Tool => ({
+  type: "function",
+  function: {
+    name: "create_cart",
+    description:
+      "Create a new cart for the current user with one or more items. Call this when the user asks to add items to a cart and no cart exists yet.",
+    parameters: {
+      type: "object",
+      properties: {
+        items: {
+          type: "array",
+          description:
+            "The items to add to the new cart. Each item must include the productId (from find_products / search_products / get_product_by_id), the quantity, and the productName.",
+          items: {
+            type: "object",
+            properties: {
+              productId: {
+                type: "string",
+                description: "The id of the product to add to the cart.",
+              },
+              quantity: {
+                type: "number",
+                description: "The quantity of the product to add to the cart.",
+              },
+              productName: {
+                type: "string",
+                description: "The name of the product to add to the cart.",
+              },
+            },
+            required: ["productId", "quantity", "productName"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["items"],
+      additionalProperties: false,
+    },
+  },
+});
+
+const updateCartTool = (): Tool => ({
+  type: "function",
+  function: {
+    name: "update_cart",
+    description:
+      "Modify the current user's existing cart by adding items or removing items. Call this when the user asks to add more of a product, add a new product to an already-created cart, remove some quantity of a product, or remove a product entirely. If no cart exists yet, call create_cart instead. If you don't know the current quantities in the cart, call get_cart first.",
+    parameters: {
+      type: "object",
+      properties: {
+        items: {
+          type: "array",
+          minItems: 1,
+          description:
+            "List of item changes to apply to the cart. Each entry describes exactly one product and whether to add to it or remove from it. You may include multiple entries in one call to batch several changes.",
+          items: {
+            type: "object",
+            properties: {
+              productId: {
+                type: "string",
+                description:
+                  "The id of the product to update. Get this from find_products, search_products, get_product_by_id, or get_cart.",
+              },
+              productName: {
+                type: "string",
+                description: "The name of the product (for context / logging).",
+              },
+              action: {
+                type: "string",
+                enum: ["add", "remove"],
+                description:
+                  "'add' to increase this product's quantity in the cart (adds the product if it's not in the cart yet). 'remove' to decrease this product's quantity or remove the line entirely (see removeAll).",
+              },
+              quantity: {
+                type: "integer",
+                minimum: 1,
+                description:
+                  "How many units to add or remove. Must be at least 1. Ignored when action is 'remove' and removeAll is true. Example: user says 'add 2 more' -> action='add', quantity=2. User says 'remove one' -> action='remove', quantity=1.",
+              },
+              removeAll: {
+                type: "boolean",
+                description:
+                  "Only valid when action is 'remove'. Set to true when the user wants to remove the product entirely from the cart (e.g. 'remove all of X', 'delete X', 'take X out'). When true, quantity is ignored. Defaults to false.",
+              },
+            },
+            required: ["productId", "productName", "action", "quantity"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["items"],
+      additionalProperties: false,
+    },
   },
 });
 
@@ -204,5 +299,7 @@ export default {
   loginUserTool,
   registerUserTool,
   verifyOTP,
-  getCartItemsTool,
+  getCartTool,
+  createCartTool,
+  updateCartTool,
 };

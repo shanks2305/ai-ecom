@@ -1,6 +1,9 @@
 import { VerificationPurpose } from "../../../generated/prisma/enums.js";
+import { getConversationContext } from "../../../lib/context.js";
 import { logger } from "../../../lib/logger.js";
 import authService from "../../auth/auth.service.js";
+import cartController from "../../cart/cart.controller.js";
+import { cartItem, cartItemChange } from "../../cart/cart.types.js";
 import brandService from "../../catalog/brand.service.js";
 import categoryService from "../../catalog/category.service.js";
 import productService from "../../catalog/product.service.js";
@@ -17,7 +20,9 @@ export default function getTools() {
         tools.loginUserTool(),
         tools.registerUserTool(),
         tools.verifyOTP(),
-        tools.getCartItemsTool(),
+        tools.getCartTool(),
+        tools.createCartTool(),
+        tools.updateCartTool(),
     ];
 }
 
@@ -39,6 +44,47 @@ function parseArgs(raw: unknown): Record<string, unknown> {
 function requireString(args: Record<string, unknown>, key: string): string | null {
     const value = args[key];
     return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function parseCartItems(raw: unknown): cartItem[] | null {
+    if (!Array.isArray(raw) || raw.length === 0) return null;
+    const items: cartItem[] = [];
+    for (const entry of raw) {
+        if (!entry || typeof entry !== "object") return null;
+        const e = entry as Record<string, unknown>;
+        const productId = typeof e.productId === "string" ? e.productId.trim() : "";
+        const productName = typeof e.productName === "string" ? e.productName.trim() : "";
+        const quantityRaw = typeof e.quantity === "number" ? e.quantity : NaN;
+        const quantity = Number.isFinite(quantityRaw) ? Math.floor(quantityRaw) : NaN;
+        if (!productId || !productName || !Number.isFinite(quantity) || quantity < 1) {
+            return null;
+        }
+        items.push({ productId, productName, quantity });
+    }
+    return items;
+}
+
+function parseCartItemChanges(raw: unknown): cartItemChange[] | null {
+    if (!Array.isArray(raw) || raw.length === 0) return null;
+    const changes: cartItemChange[] = [];
+    for (const entry of raw) {
+        if (!entry || typeof entry !== "object") return null;
+        const e = entry as Record<string, unknown>;
+        const productId = typeof e.productId === "string" ? e.productId.trim() : "";
+        const productName = typeof e.productName === "string" ? e.productName.trim() : "";
+        const action = e.action === "add" || e.action === "remove" ? e.action : null;
+        const quantityRaw = typeof e.quantity === "number" ? e.quantity : NaN;
+        const quantity = Number.isFinite(quantityRaw) ? Math.floor(quantityRaw) : NaN;
+        const removeAll = e.removeAll === true;
+        if (!productId || !productName || !action || !Number.isFinite(quantity) || quantity < 1) {
+            return null;
+        }
+        if (removeAll && action !== "remove") {
+            return null;
+        }
+        changes.push({ productId, productName, action, quantity, removeAll });
+    }
+    return changes;
 }
 
 export const toolExecutor = async (toolName: string, rawArgs: unknown) => {
@@ -125,6 +171,46 @@ export const toolExecutor = async (toolName: string, rawArgs: unknown) => {
                 ok: true,
                 user,
             };
+        }
+
+        case "get_cart": {
+            const { conversationId }  = getConversationContext()
+            if(!conversationId) {
+                return { error: "Conversation not found" };
+            }
+            const cart = await cartController.getCart(conversationId);
+            return cart;
+        }
+
+        case "create_cart": {
+            const { conversationId, user } = getConversationContext();
+            console.log("conversationId", conversationId, user);
+            if (!conversationId || !user) {
+                logger.info(`You must be signed in and in an active conversation to create a cart.`);
+                return { error: "You must be signed in and in an active conversation to create a cart." };
+            }
+            const items = parseCartItems(args.items);
+            if (!items) {
+                logger.info(`items must be a non-empty array of { productId, productName, quantity } objects.`);
+                return { error: "items must be a non-empty array of { productId, productName, quantity } objects." };
+            }
+            logger.info(`Creating cart for user ${user.id} in conversation ${conversationId} with items ${items}`);
+
+            return cartController.createCart(user.id, conversationId, items);
+        }
+
+        case "update_cart": {
+            const { conversationId } = getConversationContext();
+            if (!conversationId) {
+                return { error: "Conversation not found" };
+            }
+            const changes = parseCartItemChanges(args.items);
+            if (!changes) {
+                return {
+                    error: "items must be a non-empty array of { productId, productName, action, quantity, removeAll? } objects. action must be 'add' or 'remove'; quantity must be an integer >= 1; removeAll (optional) is only valid with action='remove'.",
+                };
+            }
+            return cartController.updateCart(conversationId, changes);
         }
 
         default:
