@@ -8,6 +8,7 @@ export async function startConversation(content: string, conversationId?: string
   const response = await fetch(`${getApiUrl()}/api/v1/conversation/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: "include",
     body: JSON.stringify({
       content,
       channel: 'WEB',

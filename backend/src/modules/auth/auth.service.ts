@@ -1,6 +1,9 @@
+import { env } from "../../config/env.js";
 import { Permission } from "../../constant/permision.js";
 import { Role, VerificationPurpose } from "../../generated/prisma/enums.js";
 import { requirePermission } from "../../lib/auth.js";
+import { getConversationContext } from "../../lib/context.js";
+import { logger } from "../../lib/logger.js";
 import { prisma } from "../../lib/prisma.js";
 import jwtService from "./jwt.service.js";
 import otpService from "./otp.service.js";
@@ -58,7 +61,7 @@ const login = async (email: string) => {
     }
 }
 
-const verifyOTP = async (email: string, code: string, purpose: VerificationPurpose) => {
+const verifyOTP = async (email: string, code: string, purpose: VerificationPurpose = VerificationPurpose.LOGIN) => {
     try {
         const sent = await otpService.verifyOTP(email, code, purpose);
         if (!sent) {
@@ -73,10 +76,21 @@ const verifyOTP = async (email: string, code: string, purpose: VerificationPurpo
             throw new Error("User not found");
         }
         const token = await jwtService.generateToken(user.id);
+        const context = getConversationContext()
+        context.token = token;
+        context.user = user;
+        context.isAuthenticated = true;
+        logger.info({ hasRes: !!context.res }, "verifyOTP setting cookie")
+        context.res?.cookie("sid", token, {
+            httpOnly: true,
+            secure: env.nodeEnv === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: env.jwtExpirationMinutes * 60_000,
+        })
         await jwtService.updateSession(token, user.id);
         return {
-            user,
-            token
+            user
         };
     } catch (error) {
         throw error;
@@ -86,8 +100,34 @@ const verifyOTP = async (email: string, code: string, purpose: VerificationPurpo
 const logout = async (userId: string, token: string) => {
     try {
         await jwtService.deleteSession(userId, token);
+        const context = getConversationContext()
+        context.res?.clearCookie("sid", { path: "/" })
+        context.token = "";
+        context.user = null;
+        context.isAuthenticated = false;
         return true;
     } catch (error) {
+        throw error;
+    }
+}
+
+const checkUserAuth = async () => {
+    try {
+        const { user, isAuthenticated } = getConversationContext()
+        logger.info(`User ${user?.email} is authenticated ${isAuthenticated} ${user?.id ? `(id: ${user.id})` : ""}`)
+        if(!isAuthenticated) {
+            return {
+                message: "You are not authenticated. Please login to continue.",
+                user: null,
+            }
+        } else {
+            return {
+                message: "You are authenticated. Please continue.",
+                user: user,
+            }
+        } 
+    } catch (error) {
+        logger.error(error);
         throw error;
     }
 }
@@ -97,5 +137,6 @@ export default {
     login,
     verifyOTP,
     logout,
-    createAdmin
+    createAdmin,
+    checkUserAuth
 }

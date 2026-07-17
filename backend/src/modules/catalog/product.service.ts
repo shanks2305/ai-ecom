@@ -129,6 +129,12 @@ const searchProducts = async (query: string) => {
     try {
         const products = await prisma.product.findMany({
             where: { OR: [{ name: { contains: query, mode: "insensitive" } }, { description: { contains: query, mode: "insensitive" } }] },
+            include: {  
+                inventories: true,
+                images: true,
+                brand: true,
+                category: true
+            }
         });
         return products;
     } catch (error) {
@@ -139,7 +145,14 @@ const searchProducts = async (query: string) => {
 // list()
 const listProducts = async () => {
     try {
-        const products = await prisma.product.findMany();
+        const products = await prisma.product.findMany({
+            include: {  
+                inventories: true,
+                images: true,
+                brand: true,
+                category: true
+            }
+        });
         return products;
     } catch (error) {
         throw error;
@@ -150,6 +163,12 @@ const getProductsByQuery = async (query: any) => {
     try {
         const products = await prisma.product.findMany({
             where: query,
+            include: {  
+                inventories: true,
+                images: true,
+                brand: true,
+                category: true
+            }
         });
         return products;
     } catch (error) {
@@ -165,6 +184,12 @@ const findAlternatives = async (ids: string[]) => {
         }
         const products = await prisma.product.findMany({
             where: { id: { in: ids } },
+            include: {  
+                inventories: true,
+                images: true,
+                brand: true,
+                category: true
+            }
         });
 
         const productMap = new Map(products.map((product) => [product.id, product]));

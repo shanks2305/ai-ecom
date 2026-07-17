@@ -7,6 +7,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { logger } from "../lib/logger.js";
 import { errorHandler, notFoundHandler } from "./errorHandler.js";
+import cookieParser from "cookie-parser";
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -23,6 +24,7 @@ export function applyMiddleware(app: Express) {
     })
   );
   app.use(compression());
+  app.use(cookieParser())
   app.use(morgan(isProduction ? "combined" : "dev", { stream: morganStream }));
   app.use(
     rateLimit({

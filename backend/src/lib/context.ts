@@ -1,11 +1,13 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { User } from "../generated/prisma/client.js";
+import type { Response } from "express"
 
 type ConversationContext = {
     token: string;
     user: User | null;
     isAuthenticated: boolean;
     conversationId: string | undefined;
+    res: Response | null
 };
 
 const conversationContext = new AsyncLocalStorage<ConversationContext>();

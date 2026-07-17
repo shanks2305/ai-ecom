@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import type { User } from "../generated/prisma/client.js";
+import { type User } from "../generated/prisma/client.js";
 import { runWithConversationContext } from "../lib/context.js";
 import jwtService from "../modules/auth/jwt.service.js";
 
@@ -8,10 +8,11 @@ const getHeader = (value: string | string[] | undefined): string | undefined =>
 
 const authenticateUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const authHeader = req.headers.authorization;
-        const token = authHeader?.startsWith("Bearer ")
-            ? authHeader.slice(7)
-            : authHeader?.split(" ")[1];
+        const token =
+            req.cookies?.sid ??
+            (req.headers.authorization?.startsWith("Bearer ")
+                ? req.headers.authorization.slice(7)
+                : req.headers.authorization?.split(" ")[1])
 
         const conversationId = getHeader(
             req.headers["x-conversation-id"] ?? req.headers.conversationid
@@ -28,16 +29,10 @@ const authenticateUser = async (req: Request, res: Response, next: NextFunction)
                 // invalid or expired token — continue as guest
             }
         }
-
         runWithConversationContext(
-            {
-                token: token ?? "",
-                user,
-                isAuthenticated,
-                conversationId,
-            },
+            { token: token ?? "", user, isAuthenticated, conversationId, res },
             () => next()
-        );
+        )
     } catch (error) {
         next(error);
     }

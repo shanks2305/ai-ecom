@@ -1,7 +1,9 @@
 import type { NextFunction, Request, Response } from "express";
 import conversationService from "./conversation.service.js";
 import { env } from "../../config/env.js";
-import { Conversation, Message } from "../../generated/prisma/client.js";
+import { Conversation, ConversationStage, ConversationStatus, Message, Prisma } from "../../generated/prisma/client.js";
+import { getConversationContext } from "../../lib/context.js";
+import { prisma } from "../../lib/prisma.js";
 
 const serializeConversation = (conversation: Conversation, messages: Message[]) => {
     return {
@@ -22,6 +24,7 @@ const serializeConversation = (conversation: Conversation, messages: Message[]) 
 const createConversation = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { userId, channel, stage, content, conversationId } = req.body;
+        const { user, isAuthenticated } = getConversationContext()
         const model = env.ai.model;
 
         if (!content) {
@@ -34,6 +37,19 @@ const createConversation = async (req: Request, res: Response, next: NextFunctio
                 res.status(404).json({ error: "Conversation not found" });
                 return;
             }
+            let payload: Prisma.ConversationUpdateInput = {
+                lastMessageAt: new Date(),
+                status: ConversationStatus.ACTIVE,
+            }
+            if(isAuthenticated && user?.id){
+                payload.user = {
+                    connect: {
+                        id: user?.id,
+                    },
+                }
+                payload.stage = ConversationStage.AUTHENTICATED;
+            }
+            await conversationService.updateConversation(conversationId, payload);
             const { messages } = await conversationService.sendMessage(conversationId, content, model);
             res.status(200).json(serializeConversation(conversation, messages));
             return;
