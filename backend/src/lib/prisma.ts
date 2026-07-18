@@ -81,3 +81,15 @@ if (env.nodeEnv !== "production") {
 }
 
 export type ExtendedPrismaClient = ReturnType<typeof createPrismaClient>;
+
+/**
+ * The client shape available inside a `prisma.$transaction(async (tx) => ...)`
+ * callback. It exposes all model delegates from the extended client but omits
+ * the top-level lifecycle methods that are not usable inside a transaction.
+ * Service functions accept this type so they can be reused with or without an
+ * outer transaction.
+ */
+export type PrismaTx = Omit<
+  ExtendedPrismaClient,
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+>;

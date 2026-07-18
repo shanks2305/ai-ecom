@@ -1,4 +1,4 @@
-import { VerificationPurpose } from "../../../generated/prisma/enums.js";
+import { PaymentMethod, VerificationPurpose } from "../../../generated/prisma/enums.js";
 import { getConversationContext } from "../../../lib/context.js";
 import { logger } from "../../../lib/logger.js";
 import authService from "../../auth/auth.service.js";
@@ -7,6 +7,7 @@ import { cartItem, cartItemChange } from "../../cart/cart.types.js";
 import brandService from "../../catalog/brand.service.js";
 import categoryService from "../../catalog/category.service.js";
 import productService from "../../catalog/product.service.js";
+import orderController from "../../order/order.controler.js";
 import tools from "./tool.js";
 
 export default function getTools() {
@@ -23,6 +24,10 @@ export default function getTools() {
         tools.getCartTool(),
         tools.createCartTool(),
         tools.updateCartTool(),
+        tools.getUserInfoTool(),
+        tools.checkOutCartTool(),
+        tools.getOrderDetailsOfUserTool(),
+        tools.getOrderDetailByOrderIdTool(),
     ];
 }
 
@@ -184,7 +189,6 @@ export const toolExecutor = async (toolName: string, rawArgs: unknown) => {
 
         case "create_cart": {
             const { conversationId, user } = getConversationContext();
-            console.log("conversationId", conversationId, user);
             if (!conversationId || !user) {
                 logger.info(`You must be signed in and in an active conversation to create a cart.`);
                 return { error: "You must be signed in and in an active conversation to create a cart." };
@@ -211,6 +215,37 @@ export const toolExecutor = async (toolName: string, rawArgs: unknown) => {
                 };
             }
             return cartController.updateCart(conversationId, changes);
+        }
+
+        case "get_user_info": {
+            const { user } = getConversationContext();
+            if (!user) {
+                return { error: "User not found" };
+            }
+            return user;
+        }
+
+        case "check_out_cart": {
+            const paymentMethod = requireString(args, "paymentMethod");
+            if (!paymentMethod) {
+                return { error: "Missing required argument: paymentMethod" };
+            }
+            if (!Object.values(PaymentMethod).includes(paymentMethod as PaymentMethod)) {
+                return { error: "Invalid payment method" };
+            }
+            return orderController.checkOutUserCart(paymentMethod as PaymentMethod);
+        }
+
+        case "get_order_details_of_user": {
+            return orderController.getOrderDetailsUser();
+        }
+
+        case "get_order_detail_by_order_number": {
+            const orderNumber = requireString(args, "orderNumber");
+            if (!orderNumber) {
+                return { error: "Missing required argument: orderNumber" };
+            }
+            return orderController.getOrderDetailByOrderId(orderNumber);
         }
 
         default:

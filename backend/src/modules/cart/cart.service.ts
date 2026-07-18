@@ -1,5 +1,5 @@
 import { Prisma } from "../../generated/prisma/client.js";
-import { prisma } from "../../lib/prisma.js";
+import { prisma, type PrismaTx } from "../../lib/prisma.js";
 import { cartItem, cartItemChange } from "./cart.types.js";
 import { logger } from "../../lib/logger.js";
 
@@ -116,16 +116,18 @@ const applyCartChanges = async (conversationId: string, changes: cartItemChange[
     return cart;
 };
 
-const deleteCart = async (conversationId: string) => {
+const deleteCart = async (conversationId: string, tx?: PrismaTx) => {
     try {
-        await prisma.cart.delete({
+        const db = tx ?? prisma;
+        await db.cart.delete({
             where: {
                 conversationId,
             },
         });
+        logger.info(`Cart deleted successfully: ${conversationId}`);
         return true;
     } catch (error) {
-        logger.info(`Error deleting cart: ${error}`);
+        logger.error(`Error deleting cart: ${error}`);
         throw error;
     }
 }

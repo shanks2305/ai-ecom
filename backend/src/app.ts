@@ -3,6 +3,7 @@ import { applyErrorHandlers, applyMiddleware } from "./middleware/index.js";
 import isSuperAdminPreset from "./modules/bootstrap/bootstrap.service.js";
 import { logger } from "./lib/logger.js";
 import conversationRoute from "./modules/conversation/conversation.route.js";
+import orderRoute from "./modules/order/order.route.js";
 
 const app = express();
 
@@ -19,6 +20,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api/v1/conversation", conversationRoute);
+app.use("/api/v1/order", orderRoute);
 
 applyErrorHandlers(app);
 

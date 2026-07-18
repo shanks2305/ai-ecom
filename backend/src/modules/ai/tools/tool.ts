@@ -1,4 +1,5 @@
 import type OpenAI from "openai";
+import { PaymentMethod } from "../../../generated/prisma/enums.js";
 
 type Tool = OpenAI.ChatCompletionTool;
 
@@ -289,6 +290,69 @@ const updateCartTool = (): Tool => ({
   },
 });
 
+const getUserInfoTool = (): Tool => ({
+  type: "function",
+  function: {
+    name: "get_user_info",
+    description:
+      "Return the currently signed-in user's profile (id, email, firstName, lastName, roles, etc.). Use when the user asks about their own account (e.g. 'what's my email?', 'who am I logged in as?', 'what name is on my account?'). Requires authentication — if you're not sure whether the user is signed in, call check_user_auth first, and if they aren't, run login_user or register_user before calling this.",
+    parameters: NO_PARAMS,
+  },
+});
+
+const checkOutCartTool = (): Tool => ({
+  type: "function",
+  function: {
+    name: "check_out_cart",
+    description:
+      "Convert the current user's cart into an order and create a payment record for it. Call this when the user confirms they want to place / checkout / buy / order the items in their cart. Preconditions: (1) the user must be signed in — verify with check_user_auth if unsure, and (2) they must have a non-empty cart — call get_cart first if you don't already know. Returns { orderDetails, url }: orderDetails is the created order with its items and payment records; url is the order-details page for this order. ALWAYS include this url in your reply to the user (for PAYMENT_GATEWAY it doubles as the page where they complete payment; for CASH_ON_DELIVERY it's where they view / track the order).",
+    parameters: {
+      type: "object",
+      properties: {
+        paymentMethod: {
+          type: "string",
+          description:
+            "How the user wants to pay. Use 'PAYMENT_GATEWAY' for any online / card / UPI / net-banking / 'pay now' request. Use 'CASH_ON_DELIVERY' when the user asks to pay on delivery, COD, or pay in cash when it arrives. If the user hasn't stated a preference, ask them before calling this tool — do not assume a default.",
+          enum: Object.values(PaymentMethod),
+        },
+      },
+      required: ["paymentMethod"],
+      additionalProperties: false,
+    },
+  },
+});
+
+const getOrderDetailsOfUserTool = (): Tool => ({
+  type: "function",
+  function: {
+    name: "get_order_details_of_user",
+    description:
+      "List every order that belongs to the currently signed-in user, most recent first. Each order in the returned array includes its items, payment records, AND a `url` field pointing to that order's details page — ALWAYS include this url next to each order you mention in your reply. Use for prompts like 'show my orders', 'order history', 'what have I bought?', 'my past purchases'. Requires authentication. For a single specific order the user references by number, prefer get_order_detail_by_order_number.",
+    parameters: NO_PARAMS,
+  },
+});
+
+const getOrderDetailByOrderIdTool = (): Tool => ({
+  type: "function",
+  function: {
+    name: "get_order_detail_by_order_number",
+    description:
+      "Fetch one specific order (with its items, payments, and a `url` field for the order-details page) by its human-readable order number. ALWAYS include the returned url in your reply so the user can open the order. Use when the user references a specific order (e.g. 'status of order ORD-1234', 'details for #A9F2', or they arrive from an order/payment link). If the user hasn't given a number, call get_order_details_of_user to list their orders first and ask them to pick one. If no order matches, the response is { error }.",
+    parameters: {
+      type: "object",
+      properties: {
+        orderNumber: {
+          type: "string",
+          description:
+            "The human-readable order number returned by check_out_cart or get_order_details_of_user (this is the value shown in the order URL, e.g. 'ORD-...'). Do NOT pass an internal database UUID here.",
+        },
+      },
+      required: ["orderNumber"],
+      additionalProperties: false,
+    },
+  },
+});
+
 export default {
   getBrandsTool,
   getAllCategoriesTool,
@@ -302,4 +366,8 @@ export default {
   getCartTool,
   createCartTool,
   updateCartTool,
+  getUserInfoTool,
+  checkOutCartTool,
+  getOrderDetailsOfUserTool,
+  getOrderDetailByOrderIdTool,
 };

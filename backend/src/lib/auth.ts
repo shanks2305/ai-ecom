@@ -4,12 +4,17 @@ import authorizationService from "../modules/auth/authorization.service.js";
 import { getConversationContext } from "./context.js";
 
 export const requirePermission = (permission: Permission, action: string): User => {
-    const { user, isAuthenticated } = getConversationContext();
-    if (!isAuthenticated || !user) {
-        throw new Error("You are not authenticated");
-    }
+    const user = requireAuth();
     if (!authorizationService.canAccess(user.role, permission)) {
         throw new Error(`You are not authorized to ${action}`);
     }
     return user;
 };
+
+export const requireAuth = (): User => {
+    const { user, isAuthenticated } = getConversationContext();
+    if (!isAuthenticated || !user) {
+        throw new Error("You are not authenticated");
+    }
+    return user;
+}
